@@ -1,4 +1,4 @@
---=== Venice/ntS :: Consumiveis (v14) ===--
+--=== Venice/ntS :: Consumiveis (v14.3 - Correção e Sync PT/EN) ===--
 if _G.__VEGG then pcall(function() _G.__VEGG:Destroy() end) end
 _G.__VEGG = nil
 
@@ -68,15 +68,15 @@ local function uniqueItems()
 end
 
 local function isExp3(l)
-    local base = l:find("assustador") or l:find("spooky") or l:find("xp")
+    local base = l:find("assustador") or l:find("spooky") or l:find("xp") or l:find("exp")
     if not base then return false end
-    return (l:find("iii") or l:match("%s3$") or l:find("nivel 3")) ~= nil
+    return (l:find("iii") or l:match("%s3$") or l:find("nivel 3") or l:find("nível 3")) ~= nil
 end
 
 local function findByKey(kind)
     for _, n in ipairs(uniqueItems()) do
         local l = string.lower(n)
-        if kind == "protein" and (l:find("protein") or l:find("ovo")) then return n end
+        if kind == "protein" and (l:find("protein") or l:find("ovo") or l:find("proteina")) then return n end
         if kind == "exp" and isExp3(l) then return n end
     end
     return nil
@@ -117,7 +117,7 @@ local function resolveIcon()
     return nil
 end
 
---================ BUFF EXP (+100%) ================
+--================ BUFF EXP (Sincronização Avançada PT/EN) ================
 local function parseTime(txt)
     if not txt then return nil end
     local h = tonumber(txt:match("(%d+)%s*[hH]"))
@@ -152,7 +152,8 @@ local function readExpBuff()
     for _, o in ipairs(pg:GetDescendants()) do
         if o:IsA("TextLabel") and o.Visible then
             local t = string.lower(o.Text or "")
-            if t:find("exp", 1, true) then
+            -- Procura por qualquer termo que indique o buff de EXP/Pet em PT ou EN
+            if t:find("exp", 1, true) or t:find("xp", 1, true) or t:find("pet", 1, true) or t:find("bônus", 1, true) or t:find("bonus", 1, true) or t:find("spooky", 1, true) or t:find("assustador", 1, true) then
                 local v = parseTime(o.Text) or siblingsTime(o)
                 if v then
                     if t:find("100", 1, true) then return v end
@@ -189,13 +190,16 @@ local function autoLoop(kind)
             if kind == "exp" then
                 local rem = readExpBuff()
                 if rem and rem > 3 then
-                    log(("exp: buff +100% ativo, aguardando %s"):format(fmt(rem)))
+                    log(("exp: buff ativo detectado, sincronizando e aguardando %s"):format(fmt(rem)))
                     local alvo = os.clock() + rem
                     A.nextAt = alvo
-                    while A.on and A.gen == g and os.clock() < alvo - 3 do
+                    while A.on and A.gen == g and os.clock() < alvo - 2 do
                         task.wait(5)
                         local r2 = readExpBuff()
-                        if r2 then alvo = os.clock() + r2; A.nextAt = alvo end
+                        if r2 then 
+                            alvo = os.clock() + r2 
+                            A.nextAt = alvo 
+                        end
                     end
                 end
                 if not A.on or A.gen ~= g then break end
@@ -422,7 +426,7 @@ local function build()
     mkBtn("DIAG", 0.5, 0.5, 286, Color3.fromRGB(45, 60, 110), function()
         log("evento: " .. tostring(Event))
         log("alvo exp III: " .. tostring(findByKey("exp")))
-        log("buff 100%: " .. tostring(readExpBuff()))
+        log("buff ativo lido: " .. tostring(readExpBuff()))
         for _, n in ipairs(uniqueItems()) do log("  " .. n .. " x" .. countNamed(n)) end
     end)
 
@@ -440,7 +444,6 @@ local function build()
     out.Parent = f
     LogBox = out
 
-    -- botao flutuante ancorado no canto
     local tg = Instance.new("TextButton")
     tg.Size = UDim2.fromOffset(52, 52)
     tg.AnchorPoint = Vector2.new(1, 1)
@@ -467,7 +470,6 @@ local function build()
         tg.Text = ""
     end
 
-    -- escala para caber na tela
     local function fit()
         local vp = Cam and Cam.ViewportSize or Vector2.new(800, 600)
         local s = math.min(1, (vp.Y - 30) / 540, (vp.X - 30) / 300)
@@ -495,7 +497,7 @@ local function build()
             if Auto.exp.on then
                 local b = readExpBuff()
                 if b and b > 0 then
-                    eLbl.Text = "+100% EXP ativo: " .. fmt(b) .. " (uso quando zerar)"
+                    eLbl.Text = "Buff ativo: " .. fmt(b) .. " (sincronizado)"
                 elseif Auto.exp.nextAt > 0 then
                     eLbl.Text = "proximo em " .. fmt(Auto.exp.nextAt - os.clock())
                 else
@@ -521,5 +523,5 @@ local function build()
 end
 
 build()
-log("Venice/ntS v14 pronta.")
-log("buff 100% lido: " .. tostring(readExpBuff()))
+log("Venice/ntS v14.3 pronta.")
+log("buff lido: " .. tostring(readExpBuff()))
