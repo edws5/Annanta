@@ -1,16 +1,17 @@
---=== Venice/ntS :: Consumiveis (v13) ===--
+--=== Venice/ntS :: Consumiveis (v14) ===--
 if _G.__VEGG then pcall(function() _G.__VEGG:Destroy() end) end
 _G.__VEGG = nil
 
 local CONFIG = {
     TITLE = "Venice/ntS",
-    ICON = "112737554168952",          -- cole aqui o ID do decal (só o número)
-    FILE = "venice.png", -- ou deixe a imagem salva com este nome
+    ICON = "112737554168952",
+    FILE = "venice.png",
 }
 
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
 local LP = Players.LocalPlayer
+local Cam = workspace.CurrentCamera
 
 local LogLines = {}
 local LogBox = nil
@@ -116,7 +117,7 @@ local function resolveIcon()
     return nil
 end
 
---================ LEITURA DO BUFF ================
+--================ BUFF EXP (+100%) ================
 local function parseTime(txt)
     if not txt then return nil end
     local h = tonumber(txt:match("(%d+)%s*[hH]"))
@@ -126,40 +127,41 @@ local function parseTime(txt)
     return (h or 0) * 3600 + (m or 0) * 60 + (s or 0)
 end
 
-local function readBuffRemaining(words)
+local function siblingsTime(lbl)
+    local p1 = lbl.Parent
+    local function scan(box)
+        if not box then return nil end
+        for _, sib in ipairs(box:GetChildren()) do
+            if sib:IsA("TextLabel") then
+                local v = parseTime(sib.Text)
+                if v then return v end
+            end
+        end
+        return nil
+    end
+    local v1 = scan(p1)
+    if v1 then return v1 end
+    if p1 and p1.Parent then return scan(p1.Parent) end
+    return nil
+end
+
+local function readExpBuff()
     local pg = LP:FindFirstChild("PlayerGui")
     if not pg then return nil end
+    local fallback
     for _, o in ipairs(pg:GetDescendants()) do
         if o:IsA("TextLabel") and o.Visible then
-            local txt = string.lower(o.Text or "")
-            local hit = false
-            for _, w in ipairs(words) do
-                if txt:find(w) then hit = true; break end
-            end
-            if hit then
-                local v = parseTime(o.Text)
-                if v then return v end
-                local function scan(box)
-                    if not box then return nil end
-                    for _, sib in ipairs(box:GetChildren()) do
-                        if sib:IsA("TextLabel") then
-                            local sv = parseTime(sib.Text)
-                            if sv then return sv end
-                        end
-                    end
-                    return nil
-                end
-                local p1 = o.Parent
-                local v1 = scan(p1)
-                if v1 then return v1 end
-                if p1 and p1.Parent then
-                    local v2 = scan(p1.Parent)
-                    if v2 then return v2 end
+            local t = string.lower(o.Text or "")
+            if t:find("exp", 1, true) then
+                local v = parseTime(o.Text) or siblingsTime(o)
+                if v then
+                    if t:find("100", 1, true) then return v end
+                    if not fallback then fallback = v end
                 end
             end
         end
     end
-    return nil
+    return fallback
 end
 
 local function fmt(sec)
@@ -185,14 +187,14 @@ local function autoLoop(kind)
     task.spawn(function()
         while A.on and A.gen == g do
             if kind == "exp" then
-                local rem = readBuffRemaining({ "exp" })
+                local rem = readExpBuff()
                 if rem and rem > 3 then
-                    log(("exp: buff ativo, aguardando %s"):format(fmt(rem)))
+                    log(("exp: buff +100% ativo, aguardando %s"):format(fmt(rem)))
                     local alvo = os.clock() + rem
                     A.nextAt = alvo
                     while A.on and A.gen == g and os.clock() < alvo - 3 do
                         task.wait(5)
-                        local r2 = readBuffRemaining({ "exp" })
+                        local r2 = readExpBuff()
                         if r2 then alvo = os.clock() + r2; A.nextAt = alvo end
                     end
                 end
@@ -232,12 +234,17 @@ local function build()
     local gui = Instance.new("ScreenGui")
     gui.Name = "VeniceEgg"
     gui.ResetOnSpawn = false
+    gui.IgnoreGuiInset = true
     gui.Parent = parent
     if not gui.Parent then gui.Parent = LP:WaitForChild("PlayerGui", 5) end
 
+    local usr = Instance.new("UIScale")
+    usr.Parent = gui
+
     local f = Instance.new("Frame")
-    f.Size = UDim2.fromOffset(290, 570)
-    f.Position = UDim2.new(0, 20, 0.5, -285)
+    f.Size = UDim2.fromOffset(280, 520)
+    f.AnchorPoint = Vector2.new(0.5, 0.5)
+    f.Position = UDim2.fromScale(0.5, 0.5)
     f.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
     f.BorderSizePixel = 0
     f.Active, f.Draggable = true, true
@@ -268,7 +275,7 @@ local function build()
     local hc = Instance.new("UICorner"); hc.CornerRadius = UDim.new(0, 5); hc.Parent = hide
 
     local scroll = Instance.new("ScrollingFrame")
-    scroll.Size = UDim2.new(1, -16, 0, 118)
+    scroll.Size = UDim2.new(1, -16, 0, 110)
     scroll.Position = UDim2.fromOffset(8, 34)
     scroll.BackgroundColor3 = Color3.fromRGB(26, 26, 31)
     scroll.BorderSizePixel = 0
@@ -296,7 +303,7 @@ local function build()
         selected = names[1]
         for i, nm in ipairs(names) do
             local b = Instance.new("TextButton")
-            b.Size = UDim2.new(1, -8, 0, 34)
+            b.Size = UDim2.new(1, -8, 0, 32)
             b.BackgroundColor3 = Color3.fromRGB(40, 40, 46)
             b.BorderSizePixel = 0
             b.Text = ""
@@ -305,7 +312,7 @@ local function build()
             b.Parent = scroll
             local bc = Instance.new("UICorner"); bc.CornerRadius = UDim.new(0, 4); bc.Parent = b
             local ico = Instance.new("ImageLabel")
-            ico.Size = UDim2.fromOffset(28, 28)
+            ico.Size = UDim2.fromOffset(26, 26)
             ico.Position = UDim2.fromOffset(3, 3)
             ico.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
             ico.BorderSizePixel = 0
@@ -315,8 +322,8 @@ local function build()
             local url = iconFor(nm)
             if url then ico.Image = url end
             local lbl = Instance.new("TextLabel")
-            lbl.Size = UDim2.new(1, -40, 1, 0)
-            lbl.Position = UDim2.fromOffset(36, 0)
+            lbl.Size = UDim2.new(1, -38, 1, 0)
+            lbl.Position = UDim2.fromOffset(34, 0)
             lbl.BackgroundTransparency = 1
             lbl.Font = Enum.Font.Gotham
             lbl.TextSize = 11
@@ -349,18 +356,18 @@ local function build()
         return b
     end
 
-    mkBtn("x1", 0, 0.333, 158, Color3.fromRGB(45, 95, 140), function()
+    mkBtn("x1", 0, 0.333, 150, Color3.fromRGB(45, 95, 140), function()
         if selected then log(select(2, fireItem(selected, 1)) .. " " .. selected) end
     end)
-    mkBtn("x5", 0.333, 0.333, 158, Color3.fromRGB(45, 110, 70), function()
+    mkBtn("x5", 0.333, 0.333, 150, Color3.fromRGB(45, 110, 70), function()
         if selected then log(select(2, fireItem(selected, 5)) .. " " .. selected) end
     end)
-    mkBtn("x10", 0.666, 0.334, 158, Color3.fromRGB(110, 70, 140), function()
+    mkBtn("x10", 0.666, 0.334, 150, Color3.fromRGB(110, 70, 140), function()
         if selected then log(select(2, fireItem(selected, 10)) .. " " .. selected) end
     end)
 
     local pBtn
-    pBtn = mkBtn("AUTO PROTEIN 10x / 20min: OFF", 0, 1, 192, Color3.fromRGB(40, 80, 55), function()
+    pBtn = mkBtn("AUTO PROTEIN 10x / 20min: OFF", 0, 1, 184, Color3.fromRGB(40, 80, 55), function()
         if Auto.protein.on then
             stopAuto("protein")
             pBtn.Text = "AUTO PROTEIN 10x / 20min: OFF"
@@ -374,8 +381,8 @@ local function build()
     end, 26)
 
     local pLbl = Instance.new("TextLabel")
-    pLbl.Size = UDim2.new(1, -16, 0, 16)
-    pLbl.Position = UDim2.fromOffset(8, 222)
+    pLbl.Size = UDim2.new(1, -16, 0, 15)
+    pLbl.Position = UDim2.fromOffset(8, 213)
     pLbl.BackgroundTransparency = 1
     pLbl.Font = Enum.Font.Code
     pLbl.TextSize = 10
@@ -385,7 +392,7 @@ local function build()
     pLbl.Parent = f
 
     local eBtn
-    eBtn = mkBtn("AUTO SPOOKY III 1x: OFF", 0, 1, 244, Color3.fromRGB(40, 60, 90), function()
+    eBtn = mkBtn("AUTO SPOOKY III 1x: OFF", 0, 1, 236, Color3.fromRGB(40, 60, 90), function()
         if Auto.exp.on then
             stopAuto("exp")
             eBtn.Text = "AUTO SPOOKY III 1x: OFF"
@@ -399,8 +406,8 @@ local function build()
     end, 26)
 
     local eLbl = Instance.new("TextLabel")
-    eLbl.Size = UDim2.new(1, -16, 0, 16)
-    eLbl.Position = UDim2.fromOffset(8, 274)
+    eLbl.Size = UDim2.new(1, -16, 0, 15)
+    eLbl.Position = UDim2.fromOffset(8, 265)
     eLbl.BackgroundTransparency = 1
     eLbl.Font = Enum.Font.Code
     eLbl.TextSize = 10
@@ -409,19 +416,19 @@ local function build()
     eLbl.Text = "pronto"
     eLbl.Parent = f
 
-    mkBtn("ATUALIZAR", 0, 0.5, 296, Color3.fromRGB(55, 55, 65), function()
+    mkBtn("ATUALIZAR", 0, 0.5, 286, Color3.fromRGB(55, 55, 65), function()
         refresh(); log("Lista: " .. #uniqueItems())
     end)
-    mkBtn("DIAG", 0.5, 0.5, 296, Color3.fromRGB(45, 60, 110), function()
+    mkBtn("DIAG", 0.5, 0.5, 286, Color3.fromRGB(45, 60, 110), function()
         log("evento: " .. tostring(Event))
         log("alvo exp III: " .. tostring(findByKey("exp")))
-        log("buff exp: " .. tostring(readBuffRemaining({ "exp" })))
+        log("buff 100%: " .. tostring(readExpBuff()))
         for _, n in ipairs(uniqueItems()) do log("  " .. n .. " x" .. countNamed(n)) end
     end)
 
     local out = Instance.new("TextLabel")
-    out.Size = UDim2.new(1, -16, 0, 230)
-    out.Position = UDim2.fromOffset(8, 330)
+    out.Size = UDim2.new(1, -16, 0, 196)
+    out.Position = UDim2.fromOffset(8, 320)
     out.BackgroundTransparency = 1
     out.Font = Enum.Font.Code
     out.TextSize = 9
@@ -433,18 +440,17 @@ local function build()
     out.Parent = f
     LogBox = out
 
-    -- botao flutuante com a arte
+    -- botao flutuante ancorado no canto
     local tg = Instance.new("TextButton")
     tg.Size = UDim2.fromOffset(52, 52)
-    tg.Position = UDim2.new(0, 20, 0.5, -315)
+    tg.AnchorPoint = Vector2.new(1, 1)
+    tg.Position = UDim2.new(1, -14, 1, -14)
     tg.BackgroundColor3 = Color3.fromRGB(238, 234, 216)
-    tg.BackgroundTransparency = 0
     tg.BorderSizePixel = 0
     tg.Font = Enum.Font.GothamBold
     tg.TextSize = 18
     tg.TextColor3 = Color3.fromRGB(25, 25, 25)
     tg.Text = "V"
-    tg.AutoButtonColor = true
     tg.Active, tg.Draggable, tg.Visible = true, true, false
     tg.Parent = gui
     local tgc = Instance.new("UICorner"); tgc.CornerRadius = UDim.new(1, 0); tgc.Parent = tg
@@ -461,7 +467,22 @@ local function build()
         tg.Text = ""
     end
 
-    local function setVisible(v) f.Visible = v; tg.Visible = not v end
+    -- escala para caber na tela
+    local function fit()
+        local vp = Cam and Cam.ViewportSize or Vector2.new(800, 600)
+        local s = math.min(1, (vp.Y - 30) / 540, (vp.X - 30) / 300)
+        usr.Scale = math.max(0.55, s)
+    end
+    fit()
+    if Cam then
+        Cam:GetPropertyChangedSignal("ViewportSize"):Connect(fit)
+    end
+
+    local function setVisible(v)
+        f.Visible = v
+        tg.Visible = not v
+        if v then fit() end
+    end
     hide.MouseButton1Click:Connect(function() setVisible(false) end)
     tg.MouseButton1Click:Connect(function() setVisible(true) end)
 
@@ -472,17 +493,17 @@ local function build()
                 or "pronto"
 
             if Auto.exp.on then
-                local b = readBuffRemaining({ "exp" })
+                local b = readExpBuff()
                 if b and b > 0 then
-                    eLbl.Text = "buff ativo: " .. fmt(b) .. " (uso quando zerar)"
+                    eLbl.Text = "+100% EXP ativo: " .. fmt(b) .. " (uso quando zerar)"
                 elseif Auto.exp.nextAt > 0 then
                     eLbl.Text = "proximo em " .. fmt(Auto.exp.nextAt - os.clock())
                 else
                     eLbl.Text = "disparando..."
                 end
             else
-                local b = readBuffRemaining({ "exp" })
-                eLbl.Text = b and ("off (buff ativo " .. fmt(b) .. ")") or "pronto"
+                local b = readExpBuff()
+                eLbl.Text = b and ("off (buff " .. fmt(b) .. ")") or "pronto"
             end
             task.wait(1)
         end
@@ -500,6 +521,5 @@ local function build()
 end
 
 build()
-log("Venice/ntS v13 pronta.")
-log("icone: " .. tostring(resolveIcon() and "carregado" or "fallback V"))
-log("alvo exp III: " .. tostring(findByKey("exp")))
+log("Venice/ntS v14 pronta.")
+log("buff 100% lido: " .. tostring(readExpBuff()))
