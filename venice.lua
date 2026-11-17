@@ -525,3 +525,15 @@ end
 build()
 log("Venice/ntS v14.3 pronta.")
 log("buff lido: " .. tostring(readExpBuff()))
+
+end
+
+--================ ANTI-AFK INTEGRADO ================
+local vu = game:GetService("VirtualUser")
+game:GetService("Players").LocalPlayer.Idled:Connect(function()
+    vu:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+    task.wait(1)
+    vu:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+end)
+
+print("[ntS] Anti-AFK ativado com sucesso!")
