@@ -1,4 +1,4 @@
---=== Venice/ntS :: Consumiveis (v14.3 - Correção e Sync PT/EN) ===--
+--=== Venice/ntS :: Consumiveis (v15.2 - Com Disparo Direto e Anti-AFK) ===--
 if _G.__VEGG then pcall(function() _G.__VEGG:Destroy() end) end
 _G.__VEGG = nil
 
@@ -68,9 +68,8 @@ local function uniqueItems()
 end
 
 local function isExp3(l)
-    local base = l:find("assustador") or l:find("spooky") or l:find("xp") or l:find("exp")
-    if not base then return false end
-    return (l:find("iii") or l:match("%s3$") or l:find("nivel 3") or l:find("nível 3")) ~= nil
+    l = string.lower(l)
+    return l:find("spooky") and l:find("xp") and l:find("elixir") and (l:find("iii") or l:find("3"))
 end
 
 local function findByKey(kind)
@@ -152,7 +151,6 @@ local function readExpBuff()
     for _, o in ipairs(pg:GetDescendants()) do
         if o:IsA("TextLabel") and o.Visible then
             local t = string.lower(o.Text or "")
-            -- Procura por qualquer termo que indique o buff de EXP/Pet em PT ou EN
             if t:find("exp", 1, true) or t:find("xp", 1, true) or t:find("pet", 1, true) or t:find("bônus", 1, true) or t:find("bonus", 1, true) or t:find("spooky", 1, true) or t:find("assustador", 1, true) then
                 local v = parseTime(o.Text) or siblingsTime(o)
                 if v then
@@ -523,7 +521,7 @@ local function build()
 end
 
 build()
-log("Venice/ntS v14.3 pronta.")
+log("Venice/ntS v15.2 pronta.")
 log("buff lido: " .. tostring(readExpBuff()))
 
 --================ ANTI-AFK INTEGRADO ================
@@ -535,3 +533,17 @@ game:GetService("Players").LocalPlayer.Idled:Connect(function()
 end)
 
 print("[ntS] Anti-AFK ativado com sucesso!")
+
+--================ DISPARO DIRETO (COBALT) ================
+task.spawn(function()
+    local folder = LP:FindFirstChild("consumablesFolder")
+    if folder and folder:GetChildren()[608] then
+        local EventCobalt = RS:FindFirstChild("rEvents") and RS.rEvents:FindFirstChild("consumeBoostEvent")
+        if EventCobalt then
+            pcall(function()
+                EventCobalt:FireServer(folder:GetChildren()[608], 1)
+                print("[ntS] Disparo direto do item 608 executado.")
+            end)
+        end
+    end
+end)
