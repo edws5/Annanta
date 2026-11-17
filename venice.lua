@@ -526,8 +526,6 @@ build()
 log("Venice/ntS v14.3 pronta.")
 log("buff lido: " .. tostring(readExpBuff()))
 
-end
-
 --================ ANTI-AFK INTEGRADO ================
 local vu = game:GetService("VirtualUser")
 game:GetService("Players").LocalPlayer.Idled:Connect(function()
